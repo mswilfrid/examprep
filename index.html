@@ -73,73 +73,59 @@
   </div>
 
   <script>
-    // ==================== YOUR GEMINI API KEY ====================
-    const GEMINI_API_KEY = "AIzaSyDKYP2XaLsz8qCMCTMoTuXZFv9s604KHZg";   // ← PASTE YOUR REAL GEMINI API KEY HERE
+// ==================== YOUR GEMINI API KEY ====================
+const GEMINI_API_KEY = "AIzaSyDKYP2XaLsz8qCMCTMoTuXZFv9s604KHZg"; 
 
-    async function generateTest() {
-      const subject = document.getElementById('subject').value;
-      const numQuestions = parseInt(document.getElementById('numQuestions').value) || 10;
+async function generateTest() {
+  const subject = document.getElementById('subject').value;
+  const numQuestions = parseInt(document.getElementById('numQuestions').value) || 10;
 
-      const content = document.getElementById('test-content');
-      const modal = document.getElementById('modal');
+  const content = document.getElementById('test-content');
+  const modal = document.getElementById('modal');
 
-      content.innerHTML = `
-        <div class="flex flex-col items-center justify-center h-96">
-          <i class="fas fa-spinner fa-spin text-6xl text-emerald-600 mb-6"></i>
-          <p class="text-xl">Generating with Gemini...</p>
-        </div>`;
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
+  content.innerHTML = `
+    <div class="flex flex-col items-center justify-center h-96">
+      <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-emerald-600 mb-6"></div>
+      <p class="text-xl">Generating with Gemini...</p>
+    </div>`;
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
 
-      try {
-        // Initialize Gemini
-        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  try {
+    // FIX 1: Access the SDK via the window.generativeAI object
+    const { GoogleGenerativeAI } = window.generativeAI; 
+    
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    
+    // FIX 2: Use a valid model name (gemini-1.5-flash)
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-        const prompt = `You are an expert examiner for Rwanda National Examinations, Senior 6 PCM (CBC curriculum).
+    const prompt = `You are an expert examiner for Rwanda National Examinations, Senior 6 PCM (CBC curriculum).
+      Generate a ${numQuestions}-question practice test for ${subject}.
+      Use official REB CBC textbooks and recent past papers.
+      Output **ONLY** clean, self-contained HTML. No markdown code blocks (no \`\`\`html).
+      Make it professional and print-ready. Use Tailwind CSS classes.
+      Include title, instructions, numbered questions, and space for answers.`;
 
-Generate a ${numQuestions}-question practice test for ${subject}.
+    const result = await model.generateContent(prompt);
+    let html = result.response.text();
 
-Use official REB CBC textbooks and recent past papers.
-Output **ONLY** clean, self-contained HTML. No explanations outside the HTML.
-Make it professional and print-ready. Use Tailwind CSS classes.
-Include title, instructions, numbered questions, and space for answers.`;
+    // Clean markdown if the AI still includes it
+    html = html.replace(/```html|```/gi, '').trim();
 
-        const result = await model.generateContent(prompt);
-        let html = result.response.text();
+    content.innerHTML = html;
 
-        // Clean markdown if present
-        html = html.replace(/```html|```/gi, '').trim();
+  } catch (error) {
+    console.error(error);
+    content.innerHTML = `
+      <p class="text-red-500 text-center py-12">
+        Failed to generate test<br>
+        <span class="text-sm opacity-75">${error.message}</span>
+      </p>`;
+  }
+}
 
-        content.innerHTML = html;
-
-      } catch (error) {
-        console.error(error);
-        content.innerHTML = `
-          <p class="text-red-500 text-center py-12">
-            Failed to generate test<br>
-            ${error.message}
-          </p>`;
-      }
-    }
-
-    function downloadPDF() {
-      const element = document.getElementById('test-content');
-      const opt = {
-        margin: 10,
-        filename: `ExamPrep_${document.getElementById('subject').value}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
-      html2pdf().set(opt).from(element).save();
-    }
-
-    function closeModal() {
-      const modal = document.getElementById('modal');
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-    }
+// ... Keep your downloadPDF and closeModal functions the same ...
 
     // Initialize Tailwind
     tailwind.config = { content: ["**/*.{html,js}"] };
