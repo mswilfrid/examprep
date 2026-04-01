@@ -66,59 +66,50 @@
     tailwind.config = { content: ["./**/*.{html,js}"] };
 
     async function generateTest() {
-      const subject = document.getElementById('subject').value;
-      const numQuestions = document.getElementById('numQuestions').value;
+  const subject = document.getElementById('subject').value;
+  const numQuestions = document.getElementById('numQuestions').value;
 
-      // Show loading modal
-      const modal = document.getElementById('modal');
-      const content = document.getElementById('test-content');
-      content.innerHTML = `<div class="flex flex-col items-center justify-center h-96">
-        <i class="fas fa-spinner fa-spin text-6xl text-emerald-600 mb-6"></i>
-        <p class="text-xl">Contacting Dumpling AI...<br>Generating your PCM test</p>
-      </div>`;
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
+  // Show loading...
+  const content = document.getElementById('test-content');
+  content.innerHTML = `<div class="flex flex-col items-center justify-center h-96">
+    <i class="fas fa-spinner fa-spin text-6xl text-emerald-600 mb-6"></i>
+    <p>Generating with Claude...</p>
+  </div>`;
 
-      try {
-        const response = await fetch('https://hook.us2.make.com/ruc325gkh9l7t3doho3w0mfq9olbu2my', {  // ← PUT YOUR MAKE WEBHOOK URL HERE
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            subject: subject,
-            numQuestions: parseInt(numQuestions),
-            testType: 'mixed'
-          })
-        });
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': 'YOUR_ANTHROPIC_API_KEY_HERE',   // ← Put your key here (or use env variable in production)
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: "claude-3-5-sonnet-20241022",
+        max_tokens: 4000,
+        system: `You are an expert Rwandan examiner for Senior 6 PCM CBC. 
+                 Generate accurate practice tests based on REB textbooks and past papers.
+                 Output ONLY clean self-contained HTML. No extra text.`,
+        messages: [{
+          role: "user",
+          content: `Generate a ${numQuestions}-question practice test for ${subject} (Senior 6 PCM CBC Rwanda). 
+                    Make it professional and print-ready.`
+        }]
+      })
+    });
 
-        const data = await response.json();
-        console.log("Received from Make:", data);
+    const data = await response.json();
+    const html = data.content[0].text;   // Claude returns the HTML directly
 
-        if (data.success && data.testHtml) {
-          content.innerHTML = data.testHtml;
-        } else {
-          content.innerHTML = `<p class="text-red-500">Error: No HTML returned from Generator.</p>`;
-        }
-      } catch (err) {
-        content.innerHTML = `<p class="text-red-500">Connection error. Make sure your Make scenario is live.</p>`;
-      }
+    if (html) {
+      content.innerHTML = html;
+    } else {
+      content.innerHTML = `<p class="text-red-500">No HTML received.</p>`;
     }
-
-    function downloadPDF() {
-      const element = document.getElementById('test-content');
-      const opt = {
-        margin: 10,
-        filename: `ExamPrep_${document.getElementById('subject').value}_Senior6.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
-      html2pdf().set(opt).from(element).save();
-    }
-
-    function closeModal() {
-      const modal = document.getElementById('modal');
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
+  } catch (err) {
+    console.error(err);
+    content.innerHTML = `<p class="text-red-500">Error: ${err.message}</p>`;
+  }
     }
   </script>
 </body>
