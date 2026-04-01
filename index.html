@@ -8,16 +8,15 @@
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- html2pdf.js for PDF download -->
+  <!-- html2pdf.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   
-  <!-- Google Gemini SDK -->
+  <!-- Google Gemini SDK - Correct CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@google/generative-ai@0.21.0/dist/index.min.js"></script>
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
     body { font-family: 'Inter', sans-serif; }
-    .prose h1, .prose h2, .prose h3 { margin-top: 1.5rem; margin-bottom: 0.75rem; }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -31,7 +30,7 @@
     <div class="bg-white shadow-xl rounded-3xl p-8">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
-          <label class="block text-sm font-medium mb-2 text-gray-700">Subject</label>
+          <label class="block text-sm font-medium mb-2">Subject</label>
           <select id="subject" class="w-full border border-gray-300 rounded-2xl px-4 py-3 focus:outline-none focus:border-emerald-500">
             <option value="Physics">Physics</option>
             <option value="Chemistry">Chemistry</option>
@@ -39,13 +38,13 @@
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium mb-2 text-gray-700">Number of Questions</label>
+          <label class="block text-sm font-medium mb-2">Number of Questions</label>
           <input id="numQuestions" type="number" value="10" min="5" max="20" 
-                 class="w-full border border-gray-300 rounded-2xl px-4 py-3 focus:outline-none focus:border-emerald-500">
+                 class="w-full border border-gray-300 rounded-2xl px-4 py-3">
         </div>
         <div class="flex items-end">
           <button onclick="generateTest()" 
-                  class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-4 rounded-3xl text-lg flex items-center justify-center gap-3 transition">
+                  class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-4 rounded-3xl text-lg flex items-center justify-center gap-3">
             <i class="fas fa-bolt"></i>
             Generate Practice Test
           </button>
@@ -57,30 +56,26 @@
   <!-- Modal -->
   <div id="modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50">
     <div class="bg-white w-full max-w-4xl mx-4 rounded-3xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
-      <div class="px-8 py-5 border-b flex justify-between items-center bg-gray-50">
-        <h2 class="text-2xl font-semibold text-gray-800">Your Practice Test</h2>
+      <div class="px-8 py-5 border-b flex justify-between items-center">
+        <h2 class="text-2xl font-semibold">Your Practice Test</h2>
         <div class="flex gap-3">
           <button onclick="downloadPDF()" 
-                  class="flex items-center gap-2 bg-emerald-600 text-white px-6 py-2.5 rounded-2xl hover:bg-emerald-700 transition">
-            <i class="fas fa-download"></i> 
-            Download PDF
+                  class="flex items-center gap-2 bg-emerald-600 text-white px-6 py-2 rounded-2xl hover:bg-emerald-700">
+            <i class="fas fa-download"></i> Download PDF
           </button>
-          <button onclick="closeModal()" 
-                  class="text-3xl text-gray-400 hover:text-gray-600 leading-none">×</button>
+          <button onclick="closeModal()" class="text-3xl text-gray-400 hover:text-gray-600">×</button>
         </div>
       </div>
-      
-      <div id="test-content" class="p-8 overflow-auto flex-1 prose max-w-none bg-white">
-        <!-- Generated HTML will appear here -->
+      <div id="test-content" class="p-8 overflow-auto flex-1 bg-white">
+        <!-- Test HTML appears here -->
       </div>
     </div>
   </div>
 
   <script>
-    // ==================== CONFIG ====================
-    const GEMINI_API_KEY = "AIzaSyDKYP2XaLsz8qCMCTMoTuXZFv9s604KHZg";   // ← REPLACE WITH YOUR ACTUAL KEY
+    // ==================== YOUR GEMINI API KEY ====================
+    const GEMINI_API_KEY = "AIzaSyDKYP2XaLsz8qCMCTMoTuXZFv9s604KHZg";   // ← PASTE YOUR REAL GEMINI API KEY HERE
 
-    // ==================== GENERATE TEST ====================
     async function generateTest() {
       const subject = document.getElementById('subject').value;
       const numQuestions = parseInt(document.getElementById('numQuestions').value) || 10;
@@ -88,76 +83,65 @@
       const content = document.getElementById('test-content');
       const modal = document.getElementById('modal');
 
-      // Show loading
       content.innerHTML = `
-        <div class="flex flex-col items-center justify-center h-96 text-center">
+        <div class="flex flex-col items-center justify-center h-96">
           <i class="fas fa-spinner fa-spin text-6xl text-emerald-600 mb-6"></i>
-          <p class="text-xl text-gray-600">Generating your ${subject} practice test with Gemini...</p>
+          <p class="text-xl">Generating with Gemini...</p>
         </div>`;
-      
       modal.classList.remove('hidden');
       modal.classList.add('flex');
 
       try {
+        // Initialize Gemini
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-        const prompt = `You are an expert examiner for Rwanda National Examinations (REB), Senior 6 PCM stream under Competence-Based Curriculum (CBC).
+        const prompt = `You are an expert examiner for Rwanda National Examinations, Senior 6 PCM (CBC curriculum).
 
 Generate a ${numQuestions}-question practice test for ${subject}.
 
-Use official REB CBC textbooks and recent national exam past papers as reference.
-Output **ONLY** clean, self-contained HTML. Do not add any explanations or text outside the HTML.
-
-Requirements:
-- Professional title: "ExamPrep Rwanda - Senior 6 ${subject} Practice Test"
-- Clear instructions for the student
-- Numbered questions (mix of multiple choice, structured, and calculation problems)
-- Adequate space for student workings and answers
-- Use Tailwind CSS classes for clean, print-ready formatting
-
-Make the questions accurate, challenging, and aligned with real NESA/REB exam style.`;
+Use official REB CBC textbooks and recent past papers.
+Output **ONLY** clean, self-contained HTML. No explanations outside the HTML.
+Make it professional and print-ready. Use Tailwind CSS classes.
+Include title, instructions, numbered questions, and space for answers.`;
 
         const result = await model.generateContent(prompt);
         let html = result.response.text();
 
-        // Clean any markdown code blocks
+        // Clean markdown if present
         html = html.replace(/```html|```/gi, '').trim();
 
         content.innerHTML = html;
 
       } catch (error) {
-        console.error("Gemini Error:", error);
+        console.error(error);
         content.innerHTML = `
-          <div class="text-center py-12">
-            <p class="text-red-500 text-lg">Failed to generate test</p>
-            <p class="text-gray-600 mt-2">${error.message}</p>
-            <p class="text-sm text-gray-500 mt-4">Make sure your Gemini API key is valid.</p>
-          </div>`;
+          <p class="text-red-500 text-center py-12">
+            Failed to generate test<br>
+            ${error.message}
+          </p>`;
       }
     }
 
-    // ==================== DOWNLOAD PDF ====================
     function downloadPDF() {
       const element = document.getElementById('test-content');
       const opt = {
-        margin: 12,
-        filename: `ExamPrep_${document.getElementById('subject').value}_Senior6.pdf`,
+        margin: 10,
+        filename: `ExamPrep_${document.getElementById('subject').value}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
+        html2canvas: { scale: 2 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
       html2pdf().set(opt).from(element).save();
     }
 
-    // ==================== CLOSE MODAL ====================
     function closeModal() {
       const modal = document.getElementById('modal');
       modal.classList.add('hidden');
       modal.classList.remove('flex');
     }
 
-    // Tailwind script initialization
+    // Initialize Tailwind
     tailwind.config = { content: ["**/*.{html,js}"] };
   </script>
 </body>
