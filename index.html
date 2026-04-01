@@ -5,18 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ExamPrep Rwanda - Senior 6 PCM</title>
   
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- html2pdf.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  
-  <!-- Google Gemini SDK - Correct CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@google/generative-ai@0.21.0/dist/index.min.js"></script>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "@google/generative-ai": "https://esm.run/@google/generative-ai"
+      }
+    }
+  </script>
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
     body { font-family: 'Inter', sans-serif; }
+    .loader {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #059669;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -44,8 +59,7 @@
         </div>
         <div class="flex items-end">
           <button onclick="generateTest()" 
-                  class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-4 rounded-3xl text-lg flex items-center justify-center gap-3">
-            <i class="fas fa-bolt"></i>
+                  class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-4 rounded-3xl text-lg flex items-center justify-center gap-3 transition-colors">
             Generate Practice Test
           </button>
         </div>
@@ -53,82 +67,97 @@
     </div>
   </div>
 
-  <!-- Modal -->
-  <div id="modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-    <div class="bg-white w-full max-w-4xl mx-4 rounded-3xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
-      <div class="px-8 py-5 border-b flex justify-between items-center">
+  <div id="modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+    <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div class="px-8 py-5 border-b flex justify-between items-center bg-white sticky top-0">
         <h2 class="text-2xl font-semibold">Your Practice Test</h2>
         <div class="flex gap-3">
           <button onclick="downloadPDF()" 
-                  class="flex items-center gap-2 bg-emerald-600 text-white px-6 py-2 rounded-2xl hover:bg-emerald-700">
-            <i class="fas fa-download"></i> Download PDF
+                  class="flex items-center gap-2 bg-emerald-600 text-white px-6 py-2 rounded-2xl hover:bg-emerald-700 transition-colors">
+            Download PDF
           </button>
-          <button onclick="closeModal()" class="text-3xl text-gray-400 hover:text-gray-600">×</button>
+          <button onclick="closeModal()" class="text-3xl text-gray-400 hover:text-gray-600 px-2">×</button>
         </div>
       </div>
       <div id="test-content" class="p-8 overflow-auto flex-1 bg-white">
-        <!-- Test HTML appears here -->
-      </div>
+        </div>
     </div>
   </div>
 
-  <script>
-// ==================== YOUR GEMINI API KEY ====================
-const GEMINI_API_KEY = "AIzaSyDKYP2XaLsz8qCMCTMoTuXZFv9s604KHZg"; 
+  <script type="module">
+    import { GoogleGenerativeAI } from "@google/generative-ai";
 
-async function generateTest() {
-  const subject = document.getElementById('subject').value;
-  const numQuestions = parseInt(document.getElementById('numQuestions').value) || 10;
+    // Configuration
+    const GEMINI_API_KEY = "AIzaSyDKYP2XaLsz8qCMCTMoTuXZFv9s604KHZg";
 
-  const content = document.getElementById('test-content');
-  const modal = document.getElementById('modal');
+    // Attach functions to window so HTML 'onclick' can find them
+    window.generateTest = async function() {
+      const subject = document.getElementById('subject').value;
+      const numQuestions = parseInt(document.getElementById('numQuestions').value) || 10;
+      const content = document.getElementById('test-content');
+      const modal = document.getElementById('modal');
 
-  content.innerHTML = `
-    <div class="flex flex-col items-center justify-center h-96">
-      <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-emerald-600 mb-6"></div>
-      <p class="text-xl">Generating with Gemini...</p>
-    </div>`;
-  modal.classList.remove('hidden');
-  modal.classList.add('flex');
+      // Show Modal and Loading State
+      content.innerHTML = `
+        <div class="flex flex-col items-center justify-center h-64">
+          <div class="loader mb-4"></div>
+          <p class="text-xl text-gray-600">Gemini is crafting your ${subject} test...</p>
+        </div>`;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
 
-  try {
-    // FIX 1: Access the SDK via the window.generativeAI object
-    const { GoogleGenerativeAI } = window.generativeAI; 
-    
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    
-    // FIX 2: Use a valid model name (gemini-1.5-flash)
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      try {
+        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+        // Using gemini-1.5-flash for speed and reliability
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    const prompt = `You are an expert examiner for Rwanda National Examinations, Senior 6 PCM (CBC curriculum).
-      Generate a ${numQuestions}-question practice test for ${subject}.
-      Use official REB CBC textbooks and recent past papers.
-      Output **ONLY** clean, self-contained HTML. No markdown code blocks (no \`\`\`html).
-      Make it professional and print-ready. Use Tailwind CSS classes.
-      Include title, instructions, numbered questions, and space for answers.`;
+        const prompt = `You are an expert examiner for Rwanda National Examinations (REB), Senior 6 PCM (CBC curriculum).
+        Generate a ${numQuestions}-question practice test for ${subject}.
+        Instructions:
+        1. Use official CBC standards.
+        2. Output ONLY clean, self-contained HTML (no markdown blocks like \`\`\`html).
+        3. Use Tailwind CSS classes for styling.
+        4. Include a clear Title, Instructions, and Questions.
+        5. Provide space for student answers.`;
 
-    const result = await model.generateContent(prompt);
-    let html = result.response.text();
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        let html = response.text();
 
-    // Clean markdown if the AI still includes it
-    html = html.replace(/```html|```/gi, '').trim();
+        // Safety: Strip markdown if the AI includes it anyway
+        html = html.replace(/```html|```/gi, '').trim();
 
-    content.innerHTML = html;
+        content.innerHTML = html;
 
-  } catch (error) {
-    console.error(error);
-    content.innerHTML = `
-      <p class="text-red-500 text-center py-12">
-        Failed to generate test<br>
-        <span class="text-sm opacity-75">${error.message}</span>
-      </p>`;
-  }
-}
+      } catch (error) {
+        console.error("Gemini Error:", error);
+        content.innerHTML = `
+          <div class="text-center py-12">
+            <p class="text-red-500 font-bold text-xl mb-2">Generation Failed</p>
+            <p class="text-gray-600">${error.message}</p>
+            <button onclick="closeModal()" class="mt-4 text-emerald-600 underline">Try again</button>
+          </div>`;
+      }
+    };
 
-// ... Keep your downloadPDF and closeModal functions the same ...
+    window.downloadPDF = function() {
+      const element = document.getElementById('test-content');
+      const subject = document.getElementById('subject').value;
+      const opt = {
+        margin: 10,
+        filename: `ExamPrep_Rwanda_${subject}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(element).save();
+    };
 
-    // Initialize Tailwind
-    tailwind.config = { content: ["**/*.{html,js}"] };
+    window.closeModal = function() {
+      const modal = document.getElementById('modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
   </script>
 </body>
 </html>
