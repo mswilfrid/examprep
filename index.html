@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ExamPrep Rwanda - Senior 6 PCM</title>
+  <link rel="icon" href="data:,">
   
   <script src="https://cdn.tailwindcss.com"></script>
   
@@ -28,10 +29,7 @@
       height: 40px;
       animation: spin 1s linear infinite;
     }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -42,24 +40,24 @@
       <p class="text-xl text-gray-600">Senior 6 PCM • CBC Curriculum Practice Tests</p>
     </div>
 
-    <div class="bg-white shadow-xl rounded-3xl p-8">
+    <div class="bg-white shadow-xl rounded-3xl p-8 border border-gray-100">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
-          <label class="block text-sm font-medium mb-2">Subject</label>
-          <select id="subject" class="w-full border border-gray-300 rounded-2xl px-4 py-3 focus:outline-none focus:border-emerald-500">
+          <label class="block text-sm font-medium mb-2 text-gray-700">Subject</label>
+          <select id="subject" class="w-full border border-gray-300 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none">
             <option value="Physics">Physics</option>
             <option value="Chemistry">Chemistry</option>
             <option value="Mathematics">Mathematics</option>
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium mb-2">Number of Questions</label>
+          <label class="block text-sm font-medium mb-2 text-gray-700">Questions</label>
           <input id="numQuestions" type="number" value="10" min="5" max="20" 
-                 class="w-full border border-gray-300 rounded-2xl px-4 py-3">
+                 class="w-full border border-gray-300 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500">
         </div>
         <div class="flex items-end">
           <button onclick="generateTest()" 
-                  class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-4 rounded-3xl text-lg flex items-center justify-center gap-3 transition-colors">
+                  class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-4 rounded-3xl text-lg transition-all active:scale-95 shadow-lg shadow-emerald-200">
             Generate Practice Test
           </button>
         </div>
@@ -67,19 +65,18 @@
     </div>
   </div>
 
-  <div id="modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+  <div id="modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
     <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
-      <div class="px-8 py-5 border-b flex justify-between items-center bg-white sticky top-0">
-        <h2 class="text-2xl font-semibold">Your Practice Test</h2>
+      <div class="px-8 py-5 border-b flex justify-between items-center bg-white">
+        <h2 class="text-2xl font-bold text-gray-800">Your Practice Test</h2>
         <div class="flex gap-3">
-          <button onclick="downloadPDF()" 
-                  class="flex items-center gap-2 bg-emerald-600 text-white px-6 py-2 rounded-2xl hover:bg-emerald-700 transition-colors">
+          <button onclick="downloadPDF()" class="bg-emerald-600 text-white px-6 py-2 rounded-xl hover:bg-emerald-700 font-medium transition-colors">
             Download PDF
           </button>
-          <button onclick="closeModal()" class="text-3xl text-gray-400 hover:text-gray-600 px-2">×</button>
+          <button onclick="closeModal()" class="text-3xl text-gray-400 hover:text-gray-600 px-2 transition-colors">×</button>
         </div>
       </div>
-      <div id="test-content" class="p-8 overflow-auto flex-1 bg-white">
+      <div id="test-content" class="p-10 overflow-auto flex-1 bg-white leading-relaxed">
         </div>
     </div>
   </div>
@@ -87,55 +84,53 @@
   <script type="module">
     import { GoogleGenerativeAI } from "@google/generative-ai";
 
-    // Configuration
-    const GEMINI_API_KEY = "AIzaSyDKYP2XaLsz8qCMCTMoTuXZFv9s604KHZg";
+    const API_KEY = "AIzaSyDKYP2XaLsz8qCMCTMoTuXZFv9s604KHZg";
 
-    // Attach functions to window so HTML 'onclick' can find them
     window.generateTest = async function() {
       const subject = document.getElementById('subject').value;
-      const numQuestions = parseInt(document.getElementById('numQuestions').value) || 10;
+      const numQuestions = document.getElementById('numQuestions').value;
       const content = document.getElementById('test-content');
       const modal = document.getElementById('modal');
 
-      // Show Modal and Loading State
       content.innerHTML = `
         <div class="flex flex-col items-center justify-center h-64">
-          <div class="loader mb-4"></div>
-          <p class="text-xl text-gray-600">Gemini is crafting your ${subject} test...</p>
+          <div class="loader mb-6"></div>
+          <p class="text-lg text-gray-600 animate-pulse">Designing your ${subject} test...</p>
         </div>`;
       modal.classList.remove('hidden');
       modal.classList.add('flex');
 
       try {
-        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-        // Using gemini-1.5-flash for speed and reliability
+        const genAI = new GoogleGenerativeAI(API_KEY);
+        
+        // Use gemini-1.5-flash (stable)
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-        const prompt = `You are an expert examiner for Rwanda National Examinations (REB), Senior 6 PCM (CBC curriculum).
-        Generate a ${numQuestions}-question practice test for ${subject}.
-        Instructions:
-        1. Use official CBC standards.
-        2. Output ONLY clean, self-contained HTML (no markdown blocks like \`\`\`html).
-        3. Use Tailwind CSS classes for styling.
-        4. Include a clear Title, Instructions, and Questions.
-        5. Provide space for student answers.`;
+        const prompt = `Act as a Senior 6 Examiner for Rwanda REB CBC. 
+        Generate a ${numQuestions}-question ${subject} practice test.
+        Requirements:
+        1. Professional formatting with headings.
+        2. Clean HTML structure only. 
+        3. NO markdown backticks (\`\`\`html).
+        4. Use Tailwind CSS classes for styling (e.g., text-2xl for titles).
+        5. Include sections for Questions and Space for Answers.`;
 
         const result = await model.generateContent(prompt);
-        const response = await result.response;
-        let html = response.text();
-
-        // Safety: Strip markdown if the AI includes it anyway
+        let html = await result.response.text();
+        
+        // Extra cleanup just in case AI includes backticks
         html = html.replace(/```html|```/gi, '').trim();
 
         content.innerHTML = html;
-
-      } catch (error) {
-        console.error("Gemini Error:", error);
+      } catch (err) {
+        console.error(err);
         content.innerHTML = `
           <div class="text-center py-12">
-            <p class="text-red-500 font-bold text-xl mb-2">Generation Failed</p>
-            <p class="text-gray-600">${error.message}</p>
-            <button onclick="closeModal()" class="mt-4 text-emerald-600 underline">Try again</button>
+            <p class="text-red-500 font-bold text-xl mb-4">Generation Error</p>
+            <div class="bg-red-50 p-4 rounded-xl text-red-700 text-sm mb-6 max-w-md mx-auto">
+              ${err.message}
+            </div>
+            <button onclick="closeModal()" class="text-emerald-600 font-medium hover:underline">Close and try again</button>
           </div>`;
       }
     };
@@ -144,19 +139,18 @@
       const element = document.getElementById('test-content');
       const subject = document.getElementById('subject').value;
       const opt = {
-        margin: 10,
-        filename: `ExamPrep_Rwanda_${subject}.pdf`,
+        margin: [15, 15],
+        filename: `ExamPrep_${subject}_S6.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
+        html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
       html2pdf().set(opt).from(element).save();
     };
 
     window.closeModal = function() {
-      const modal = document.getElementById('modal');
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
+      document.getElementById('modal').classList.add('hidden');
+      document.getElementById('modal').classList.remove('flex');
     };
   </script>
 </body>
