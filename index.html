@@ -87,62 +87,63 @@
         </div>`;
 
       try {
-        // 2. UPDATED API ENDPOINT
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
-
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const response = await fetch("/api/generate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
           body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text: `You are an expert Rwanda National Examination (REB) examiner.
-                TASK: Generate a ${numQuestions}-question practice test for Senior 6 PCM ${subject}.
-                STYLE: Official Competence-Based Curriculum (CBC) format. 
-                OUTPUT: ONLY clean HTML using Tailwind CSS classes. 
-                - Use 'text-slate-900' for text.
-                - Use 'border-slate-200' for table borders or lines.
-                - Include sections for "Student Name" and "Index Number".
-                - DO NOT include markdown code blocks (\`\`\`html).`
-              }]
-            }]
+            subject,
+            numQuestions
           })
         });
 
         if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error.message || "Connection failed");
+          const err = await response.json();
+          throw new Error(err.error || "Failed to generate test");
         }
 
         const data = await response.json();
         let html = data.candidates[0].content.parts[0].text;
-        
-        // Final Sanitization
+
         html = html.replace(/```html|```/gi, '').trim();
-        
-        // Inject content
-        content.innerHTML = html;
-        
+
+        // Wrap content for stability
+        content.innerHTML = `
+          <div class="max-w-3xl mx-auto text-slate-900">
+            ${html}
+          </div>
+        `;
+
       } catch (error) {
         content.innerHTML = `
           <div class="text-center py-12 bg-red-50 rounded-3xl border border-red-100">
-            <i class="fas fa-exclamation-circle text-5xl text-red-500 mb-4"></i>
-            <h3 class="text-2xl font-bold text-red-800">Oops! Something went wrong</h3>
+            <h3 class="text-2xl font-bold text-red-800">Error</h3>
             <p class="text-red-600 mt-2">${error.message}</p>
-            <button onclick="generateTest()" class="mt-6 bg-red-600 text-white px-6 py-2 rounded-xl hover:bg-red-700">Try Again</button>
-          </div>`;
+          </div>
+        `;
       }
     }
 
     function downloadPDF() {
       const element = document.getElementById('test-content');
       const subject = document.getElementById('subject').value;
-      html2pdf().from(element).set({
-        margin: [15, 15],
-        filename: `ExamPrep_S6_${subject}.pdf`,
-        html2canvas: { scale: 3 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      }).save();
+
+      setTimeout(() => {
+        html2pdf().from(element).set({
+          margin: [15, 15],
+          filename: `ExamPrep_S6_${subject}.pdf`,
+          html2canvas: {
+            scale: 2,
+            useCORS: true
+          },
+          jsPDF: {
+            unit: 'mm',
+            format: 'a4',
+            orientation: 'portrait'
+          }
+        }).save();
+      }, 500);
     }
 
     function closeModal() {
